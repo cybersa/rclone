@@ -75,6 +75,17 @@ type ItemList struct {
 	Items []Item `json:"data"`
 }
 
+// ListFilesResponse contains multiple Zoho Items with a cursor link for next page.
+type ListFilesResponse struct {
+	Items []Item `json:"data"`
+	Links struct {
+		Cursor struct {
+			HasNext bool `json:"has_next"`
+			Next string `json:"next"`
+		} `json:"cursor"`
+	} `json:"links"`
+}
+
 // UploadInfo is a simplified and slightly different version of
 // the Item struct only used in the response to uploads
 type UploadInfo struct {

@@ -39,6 +39,7 @@ const (
 	maxSleep                    = 2 * time.Second
 	decayConstant               = 2 // bigger for slower decay, exponential
 	configRootID                = "root_folder_id"
+	listLimitSize               = 1000
 )
 
 // Globals
@@ -460,13 +461,12 @@ func (f *Fs) listAll(ctx context.Context, dirID string, directoriesOnly bool, fi
 		ExtraHeaders: map[string]string{"Accept": "application/vnd.api+json"},
 		Parameters:   url.Values{},
 	}
-	opts.Parameters.Set("page[limit]", strconv.Itoa(10))
-	offset := 0
+	opts.Parameters.Set("page[limit]", strconv.Itoa(listLimitSize))
+	opts.Parameters.Set("page[next]", strconv.Itoa(0))
 OUTER:
 	for {
-		opts.Parameters.Set("page[offset]", strconv.Itoa(offset))
 
-		var result api.ItemList
+		var result api.ListFilesResponse
 		var resp *http.Response
 		err = f.pacer.Call(func() (bool, error) {
 			resp, err = f.srv.CallJSON(ctx, &opts, nil, &result)
@@ -495,7 +495,15 @@ OUTER:
 				break OUTER
 			}
 		}
-		offset += 10
+		if !result.Links.Cursor.HasNext {
+			break
+		}
+
+		nextPageURL, err := url.Parse(result.Links.Cursor.Next)
+		if err != nil {
+			return found, fmt.Errorf("couldn't parse the next page link: %w", err)
+		}
+		opts.Parameters = nextPageURL.Query()
 	}
 	return
 }
